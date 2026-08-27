@@ -12,11 +12,17 @@ class Consumable(Item, ABC):
     def use(self, user):
         pass
 
+
 class Bandage(Consumable):
 
     def use(self, user):
-        user.hp += 15
-        print(f"{self.name} used! Hp: {user.hp}")
+        if user.hp == 100:
+            print("Your health is already full!")
+            return
+        else:
+            user.hp += 15
+            print(f"{self.name} used! Hp: {user.hp}")
+            user.remove_item(self)
 
 class Weapon(ABC):
 
@@ -47,10 +53,10 @@ class Character:
         except IndexError:
             print("You don't have this item!")
 
-    def remove_item(self, index):
+    def remove_item(self, item):
         try:
-            self.inventory.pop(index)
-        except IndexError:
+            self.inventory.remove(item)
+        except ValueError:
             print("You don't have this item!")
 
     def show_inventory(self):
@@ -67,7 +73,7 @@ class Character:
 
         target.hp -= damage
 
-        if target.hp == 0:
+        if target.hp <= 0:
             print(f"You dealt {damage}!")
             print(f"{target.name} died!")
         else:
@@ -83,9 +89,11 @@ class Character:
         self._hp = max(0, min(value, 100))
 
 class Enemy(ABC):
-    def __init__(self, name, hp):
+    def __init__(self, name, hp, min_damage, max_damage):
         self.name = name
         self.hp = hp
+        self.min_damage = min_damage
+        self.max_damage = max_damage
 
     @property
     def hp(self):
@@ -100,42 +108,37 @@ class Enemy(ABC):
         pass
 
 class Zombie(Enemy):
-    def __init__(self, name, hp):
-        super().__init__(name, hp)
 
     def attack(self, target):
-        damage = random.randint(5, 20)
+        damage = random.randint(self.min_damage, self.max_damage)
         target.hp -= damage
         print(f"{self.name} attacked you! Remaining health: {target.hp}")
 
 class Skeleton(Enemy):
-    def __init__(self, name, hp):
-        super().__init__(name, hp)
 
     def attack(self, target):
-        damage = random.randint(3, 15)
+        damage = random.randint(self.min_damage, self.max_damage)
         target.hp -= damage
         print(f"{self.name} attacked you! Remaining health: {target.hp}")
 
 class Bandit(Enemy):
-    def __init__(self, name, hp):
-        super().__init__(name, hp)
 
     def attack(self, target):
-        damage = random.randint(10, 30)
+        damage = random.randint(self.min_damage, self.max_damage)
         target.hp -= damage
         print(f"{self.name} attacked you! Remaining health: {target.hp}")
 
-zombie = Zombie("Zombie", 100)
-skeleton = Skeleton("Skeleton", 100)
-bandit = Bandit("Bandit", 100)
+zombie = Zombie("Zombie", 100, 5, 20)
+skeleton = Skeleton("Skeleton", 100 ,3 ,15)
+bandit = Bandit("Bandit", 100, 9, 35)
 
 player = Character("Alexi Laiho")
 
 guitar = Guitar("ESP LTD Alexi Laiho Signature", 500, 20)
 bandage = Bandage("Bandage", 10)
 
-player.inventory.append(guitar)
+player.add_item(guitar)
+player.add_item(bandage)
 
 def item_use():
     player.show_inventory()
@@ -150,16 +153,22 @@ def item_use():
 def equip_item():
     if player.inventory:
         for index, item in enumerate(player.inventory, start=1):
-            print(f"{index}. {item.name}: ${item.value}, Damage: {item.damage}")
+            if isinstance(item, Weapon):
+                print(f"{index}. {item.name}: ${item.value}, Damage: {item.damage}")
+            else:
+                print(f"{index}. {item.name}: ${item.value}")
+
         try:
             choice = int(input("Which item do you want to equip?: "))
             choice -= 1
             selected_item = player.inventory[choice]
+
             if isinstance(selected_item, Weapon):
                 player.selected_weapon = selected_item
                 print(f"{selected_item.name} equipped!")
             else:
                 print("You can't equip this item!")
+
         except (ValueError, IndexError):
             print("Please choose a valid item!")
     else:
